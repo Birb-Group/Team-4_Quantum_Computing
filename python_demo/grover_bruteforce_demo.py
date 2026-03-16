@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import argparse
+import streamlit as stl
 import math
 import random
 from statistics import mean
@@ -14,10 +14,10 @@ def grover_iterations(n_qubits: int) -> int:
 
 def run_classical_trials(n_qubits: int, trials: int, seed: int) -> tuple[float, int, int]:
     rng = random.Random(seed)
-    n_states = 2**n_qubits
+    n_statess = 2**n_qubits
 
     # Assume brute force tries candidates in fixed order 0..N-1.
-    # If secret is uniformly random, checks = secret_index + 1.
+    # If secret random, checks = secret_index + 1.
     checks = [rng.randrange(0, n_states) + 1 for _ in range(trials)]
     avg_checks = mean(checks)
     return avg_checks, min(checks), max(checks)
@@ -98,25 +98,34 @@ def bruteforce_password(passwords: list[str], target_password: str) -> tuple[int
             return i, checks
 
 def main():
-    parser = argparse.ArgumentParser(description="Brute-force vs Grover sandbox demo")
-    parser.add_argument("--num-qubits", type=int, default=12, help="Search size N = 2^n")
-    parser.add_argument("--seed", type=int, default=7, help="Random seed")
-    parser.add_argument(
-        "--randomize-seed",
-        action="store_true",
-        help="Use a fresh random seed every run (overrides --seed)",
-    )
-    parser.add_argument(
-        "--experiments",
-        type=int,
-        default=1000,
-        help="Number of simulated Grover measurements (default: 1000)",
-    )
-    args = parser.parse_args()
-    base_seed = random.SystemRandom().randrange(0, 2**32) if args.randomize_seed else args.seed
+    """ parser = argparse.ArgumentParser(description="Brute-force vs Grover sandbox demo")
+        parser.add_argument("--num-qubits", type=int, default=12, help="Search size N = 2^n")
+        parser.add_argument("--seed", type=int, default=7, help="Random seed")
+        parser.add_argument(
+            "--randomize-seed",
+            action="store_true",
+            help="Use a fresh random seed every run (overrides --seed)",
+        )
+        parser.add_argument(
+            "--experiments",
+            type=int,
+            default=1000,
+            help="Number of simulated Grover measurements (default: 1000)",
+        )
+        args = parser.parse_args()
+    """
 
-    if args.num_qubits < 1:
-        raise ValueError("--num-qubits must be >= 1")
+    stl.set_page_config(
+        page_title= "Grover's Algorythm Search Speedup", layout="wide"
+    )
+    
+    stl.title("Grover's Algorythm Impact in Cybersecurity")
+    stl.header("How Grover's Algorythm represents security concerns on brute force attacks")
+
+
+    
+
+    """base_seed = random.SystemRandom().randrange(0, 2**32) if args.randomize_seed else args.seed
 
     n_states = 2**args.num_qubits
     grover_k = grover_iterations(args.num_qubits)
@@ -152,6 +161,6 @@ def main():
     print(f"Observed speedup:         {concrete_speedup:.2f}x fewer oracle calls")
     print(f"Classical success after k checks: {classical_success_after_k:.6f}")
     trace_grover_iterations(args.num_qubits, target_bits, grover_k)
-
+    """
 if __name__ == "__main__":
     main()
