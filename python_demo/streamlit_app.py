@@ -9,7 +9,7 @@ from qiskit.quantum_info import Statevector
 
 
 PASSWORD_FILE = "10k-common-passwords.txt"
-MAX_QUBITS = 16
+MAX_QUBITS = 10
 
 
 def grover_iterations(n_qubits: int) -> int:
@@ -149,7 +149,7 @@ def main() -> None:
         st.error("Password file is too small. Add at least 4 passwords to continue.")
         return
 
-    max_qubits_from_file = int(math.ceil(math.log2(len(all_passwords))))
+    max_qubits_from_file = int(math.floor(math.log2(len(all_passwords))))
     max_qubits = min(MAX_QUBITS, max_qubits_from_file)
     if max_qubits < 2:
         st.error("Need enough passwords for at least 2 qubits (4 states).")
@@ -161,7 +161,7 @@ def main() -> None:
             "Number of qubits",
             min_value=2,
             max_value=max_qubits,
-            value=min(12, max_qubits),
+            value=min(8, max_qubits),
             help="Search space size N = 2^n.",
         )
 
@@ -175,59 +175,27 @@ def main() -> None:
         if st.button("Reroll Random Target", use_container_width=True):
             st.session_state.reroll_nonce += 1
 
-        st.markdown("---")
-        target_mode = st.radio(
-            "Target selection",
-            ["Random", "Manual index", "Password search"],
-            index=0,
-        )
-
-    n_qubits_effective = n_qubits
-
-    if target_mode == "Password search":
-        with st.sidebar:
-            default_random_idx = random.Random(base_seed + 303).randrange(0, len(all_passwords))
-            target_idx = st.selectbox(
-                "Search password (10k list)",
-                options=list(range(len(all_passwords))),
-                index=default_random_idx,
-                format_func=lambda i: f"{i}: {all_passwords[i]}",
-            )
-        required_qubits = max(2, int(math.ceil(math.log2(target_idx + 1)))) if target_idx > 0 else 2
-        n_qubits_effective = max(n_qubits, required_qubits)
-        if n_qubits_effective != n_qubits:
-            with st.sidebar:
-                st.caption(
-                    f"Selected index needs {n_qubits_effective} qubits; simulation is using that value."
-                )
-
-    n_states = 2**n_qubits_effective
+    n_states = 2**n_qubits
     passwords = all_passwords[:n_states]
-    grover_k = grover_iterations(n_qubits_effective)
-
-    if target_mode == "Manual index":
-        with st.sidebar:
-            target_idx = st.slider("Target index", 0, len(passwords) - 1, min(5, len(passwords) - 1))
-    else:
-        if target_mode == "Random":
-            nonce = st.session_state.reroll_nonce
-            target_idx = random.Random(base_seed + 101 + nonce).randrange(0, len(passwords))
+    grover_k = grover_iterations(n_qubits)
+    nonce = st.session_state.reroll_nonce
+    target_idx = random.Random(base_seed + 101 + nonce).randrange(0, len(passwords))
 
     with st.sidebar:
         trace_iters = st.slider(
-            "Iterations to visualize",
+            "Iterations to visualize (after k calls)",
             min_value=1,
             max_value=max(grover_k, min(45, 2 * grover_k)),
             value=grover_k,
         )
 
     target_password = passwords[target_idx]
-    target_bits = format(target_idx, f"0{n_qubits_effective}b")
+    target_bits = format(target_idx, f"0{n_qubits}b")
     classical_checks = target_idx + 1
     classical_success_after_k = min(1.0, grover_k / n_states)
     expected_speedup = ((n_states + 1) / 2) / grover_k
     concrete_speedup = classical_checks / grover_k
-    trace = target_probability_trace(n_qubits_effective, target_bits, trace_iters)
+    trace = target_probability_trace(n_qubits, target_bits, trace_iters)
     prob_at_k = trace[min(grover_k, len(trace) - 1)]
     peak_iter = max(range(len(trace)), key=lambda i: trace[i])
     peak_prob = trace[peak_iter]
@@ -238,8 +206,8 @@ def main() -> None:
 
     with tab_dashboard:
         m1, m2, m3, m4, m5 = st.columns(5)
-        m1.metric("Qubits", n_qubits_effective)
-        m2.metric("Search Space N", f"{n_states:,}")
+        m1.metric("Qubits", n_qubits)
+        m2.metric("Quantum States", f"{n_states:,}")
         m3.metric("Grover k", grover_k)
         m4.metric("Expected Speedup", f"{expected_speedup:.2f}x")
         m5.metric("Seed Used", base_seed)
@@ -290,12 +258,12 @@ def main() -> None:
             )
 
         with st.expander("Show measured Grover circuit"):
-            qc = build_grover_circuit(n_qubits_effective, target_bits, grover_k)
+            qc = build_grover_circuit(n_qubits, target_bits, grover_k)
             st.code(str(qc.draw(output="text")), language="text")
 
     with tab_scaling:
         st.subheader("How the Workload Grows with Problem Size")
-        qubit_points = list(range(2, n_qubits_effective + 1))
+        qubit_points = list(range(2, n_qubits + 1))
         classical_curve = [((2**q) + 1) / 2 for q in qubit_points]
         grover_curve = [grover_iterations(q) for q in qubit_points]
         speedup_curve = [classical_curve[i] / grover_curve[i] for i in range(len(qubit_points))]
@@ -308,16 +276,39 @@ def main() -> None:
             )
             st.caption("Raw workload trend from 2 qubits up to the selected qubit count.")
         with s2:
-            st.line_chart({"Expected speedup (classical / Grover)": speedup_curve}, use_container_width=True)
+            speedup_points = [
+                {
+                    "Qubits": q,
+                    "Value": speedup_curve[i],
+                    "Series": "Expected speedup (classical / Grover)",
+                }
+                for i, q in enumerate(qubit_points)
+            ]
+            st.vega_lite_chart(
+                {
+                    "data": {"values": speedup_points},
+                    "mark": {"type": "line", "point": True},
+                    "encoding": {
+                        "x": {"field": "Qubits", "type": "quantitative"},
+                        "y": {"field": "Value", "type": "quantitative"},
+                        "color": {
+                            "field": "Series",
+                            "type": "nominal",
+                            "legend": {"title": "Legend"},
+                        },
+                    },
+                },
+                use_container_width=True,
+            )
             st.caption("Speedup grows as search space gets larger.")
 
         st.dataframe(
             [
                 {
                     "Qubits": q,
-                    "N=2^n": 2**q,
+                    "Quantum states": 2**q,
                     "Classical expected checks": round(classical_curve[i], 2),
-                    "Grover k": grover_curve[i],
+                    "Grover's algorythm calls (k)": grover_curve[i],
                     "Expected speedup": f"{speedup_curve[i]:.2f}x",
                 }
                 for i, q in enumerate(qubit_points)
