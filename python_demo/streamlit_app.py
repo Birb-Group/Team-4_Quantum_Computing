@@ -128,15 +128,15 @@ def inject_styles() -> None:
     )
 
 
-def main() -> None:
-    st.set_page_config(page_title="Grover Password Search Lab", layout="wide")
+def main():
+    st.set_page_config(page_title="Application of Grover's Algorythm in Brute Force Attacks", layout="wide")
     init_state()
     inject_styles()
 
-    st.title("Grover Password Search Lab")
+    st.title("Application of Grover's Algorythm in Brute Force Attacks")
     st.caption(
-        "A cleaner playground for comparing classical brute force with Grover-style search "
-        "and interacting with marked passwords."
+        "Comparing classical brute force with Grover brute force"
+        "by searching target password through a list of unordered passwords."
     )
 
     try:
@@ -245,7 +245,6 @@ def main() -> None:
             st.caption("Iteration 0 starts from uniform superposition.")
             st.progress(min(max(prob_at_k, 0.0), 1.0))
             st.caption(f"p(target) at k={grover_k}: {prob_at_k:.4f}")
-            st.write(f"- Peak p(target): **{peak_prob:.4f}** at iteration **{peak_iter}**")
 
             st.subheader("Step Comparison")
             st.dataframe(
@@ -268,39 +267,11 @@ def main() -> None:
         grover_curve = [grover_iterations(q) for q in qubit_points]
         speedup_curve = [classical_curve[i] / grover_curve[i] for i in range(len(qubit_points))]
 
-        s1, s2 = st.columns(2)
-        with s1:
-            st.line_chart(
-                {"Classical expected checks": classical_curve, "Grover oracle calls": grover_curve},
-                use_container_width=True,
-            )
-            st.caption("Raw workload trend from 2 qubits up to the selected qubit count.")
-        with s2:
-            speedup_points = [
-                {
-                    "Qubits": q,
-                    "Value": speedup_curve[i],
-                    "Series": "Expected speedup (classical / Grover)",
-                }
-                for i, q in enumerate(qubit_points)
-            ]
-            st.vega_lite_chart(
-                {
-                    "data": {"values": speedup_points},
-                    "mark": {"type": "line", "point": True},
-                    "encoding": {
-                        "x": {"field": "Qubits", "type": "quantitative"},
-                        "y": {"field": "Value", "type": "quantitative"},
-                        "color": {
-                            "field": "Series",
-                            "type": "nominal",
-                            "legend": {"title": "Legend"},
-                        },
-                    },
-                },
-                use_container_width=True,
-            )
-            st.caption("Speedup grows as search space gets larger.")
+        st.line_chart(
+            {"Classical expected checks": classical_curve, "Grover oracle calls": grover_curve},
+            use_container_width=True,
+        )
+        st.caption("Raw workload trend from 2 qubits up to the selected qubit count.")
 
         st.dataframe(
             [
@@ -318,13 +289,17 @@ def main() -> None:
         )
 
     with tab_security:
-        st.subheader("Cybersecurity Mapping and Caveats")
+        st.subheader("Comparison Metrics and Additional Information")
+        st.warning(
+                "All comparison metrics are evaluated based on oracle calls and iterative checks because the quantum algorythm is being executed in a classical computer simulating quantum processes."
+        )
+
         st.markdown(
             """
 1. Classical brute-force search grows like **O(N)** checks.
-2. Grover search lowers this to about **O(sqrt(N))** oracle calls.
+2. Grover search lowers this to about **O($\sqrt{N}$)** oracle calls.
 3. This is why symmetric keys are often discussed as needing effectively doubled sizes in a post-quantum setting.
-4. Password cracking is still dominated by practical controls: hashing cost, salts, MFA, lockouts, and rate limiting.
+4. Password cracking is still dominated by practical controls: hashing cost, salts, MFA, lockouts and rate limiting.
             """
         )
         st.dataframe(
@@ -332,17 +307,17 @@ def main() -> None:
                 {
                     "Classical key size (bits)": 64,
                     "Approx Grover security (bits)": 32,
-                    "Comment": "Legacy level",
+                    "Level of Security": "Legacy level",
                 },
                 {
                     "Classical key size (bits)": 128,
                     "Approx Grover security (bits)": 64,
-                    "Comment": "Current baseline",
+                    "Level of Security": "Current baseline",
                 },
                 {
                     "Classical key size (bits)": 256,
                     "Approx Grover security (bits)": 128,
-                    "Comment": "High-security target",
+                    "Level of Security": "High-security target",
                 },
             ],
             hide_index=True,
@@ -354,10 +329,6 @@ def main() -> None:
             - 128-bit symmetric key -> ~64-bit security against Grover search.
             - 256-bit symmetric key -> ~128-bit security against Grover search.
             """
-        )
-        st.warning(
-            "This app is an educational toy model. Real attacker cost depends on implementation details, "
-            "hardware limits, and protocol defenses."
         )
 
 
