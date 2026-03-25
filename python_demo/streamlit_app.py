@@ -2,6 +2,7 @@
 import html
 import math
 import random
+from pathlib import Path
 
 import streamlit as st
 from qiskit import QuantumCircuit
@@ -9,6 +10,7 @@ from qiskit.quantum_info import Statevector
 
 
 PASSWORD_FILE = "10k-common-passwords.txt"
+PASSWORD_FILE_PATH = Path(__file__).resolve().parent / PASSWORD_FILE
 MAX_QUBITS = 10
 
 
@@ -140,9 +142,12 @@ def main():
     )
 
     try:
-        all_passwords = load_passwords(PASSWORD_FILE)
+        all_passwords = load_passwords(str(PASSWORD_FILE_PATH))
     except FileNotFoundError:
-        st.error(f"Could not find `{PASSWORD_FILE}` in the current folder.")
+        st.error(
+            f"Could not find `{PASSWORD_FILE}` next to this app file. "
+            f"Expected at: `{PASSWORD_FILE_PATH}`"
+        )
         return
 
     if len(all_passwords) < 4:
