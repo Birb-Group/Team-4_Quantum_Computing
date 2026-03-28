@@ -131,11 +131,11 @@ def inject_styles() -> None:
 
 
 def main():
-    st.set_page_config(page_title="Application of Grover's Algorythm in Brute Force Attacks", layout="wide")
+    st.set_page_config(page_title="Application of Grover's Algorithm in Brute Force Attacks", layout="wide")
     init_state()
     inject_styles()
 
-    st.title("Application of Grover's Algorythm in Brute Force Attacks")
+    st.title("Application of Grover's Algorithm in Brute Force Attacks")
     st.caption(
         "Comparing classical brute force with Grover brute force"
         "by searching target password through a list of unordered passwords."
@@ -179,6 +179,7 @@ def main():
 
         if st.button("Reroll Random Target", use_container_width=True):
             st.session_state.reroll_nonce += 1
+            st.session_state.user_inp = ""
 
     n_states = 2**n_qubits
     passwords = all_passwords[:n_states]
@@ -187,6 +188,11 @@ def main():
     target_idx = random.Random(base_seed + 101 + nonce).randrange(0, len(passwords))
 
     with st.sidebar:
+        user_input = st.text_input("Enter a password of your choice", placeholder="e.g. GreatSandwich", key='user_inp')
+        user_password = True
+        if user_input == '':
+            user_password = False
+        
         trace_iters = st.slider(
             "Iterations to visualize (after k calls)",
             min_value=1,
@@ -219,19 +225,34 @@ def main():
 
         left, right = st.columns([1.05, 1])
         with left:
-            st.markdown(
-                f"""
-                <div class="panel-card">
-                    <h3>Current Marked Password</h3>
-                    <p><b>Password:</b> <code>{html.escape(target_password)}</code></p>
-                    <p><b>Index:</b> {target_idx}</p>
-                    <p><b>Bitstring:</b> <code>{target_bits}</code></p>
-                    <p><b>Fixed-order classical checks:</b> {classical_checks}</p>
-                    <p><b>Concrete speedup for this target:</b> {concrete_speedup:.2f}x</p>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
+            if user_password:
+                st.markdown(
+                    f"""
+                    <div class="panel-card">
+                        <h3>Current Marked Password</h3>
+                        <p><b>Password:</b> <code>{html.escape(user_input)}</code></p>
+                        <p><b>Index:</b> {target_idx}</p>
+                        <p><b>Bitstring:</b> <code>{target_bits}</code></p>
+                        <p><b>Fixed-order classical checks:</b> {classical_checks}</p>
+                        <p><b>Concrete speedup for this target:</b> {concrete_speedup:.2f}x</p>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+            else:
+                st.markdown(
+                    f"""
+                    <div class="panel-card">
+                        <h3>Current Marked Password</h3>
+                        <p><b>Password:</b> <code>{html.escape(target_password)}</code></p>
+                        <p><b>Index:</b> {target_idx}</p>
+                        <p><b>Bitstring:</b> <code>{target_bits}</code></p>
+                        <p><b>Fixed-order classical checks:</b> {classical_checks}</p>
+                        <p><b>Concrete speedup for this target:</b> {concrete_speedup:.2f}x</p>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
             st.markdown(
                 '<div class="mini-note"><b>Interpretation:</b> for this exact target position, '
                 "classical brute force needs index+1 checks; Grover uses about sqrt(N) oracle calls."
